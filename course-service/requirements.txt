@@ -6,4 +6,5 @@ pydantic==2.11.7
 PyJWT==2.14.0
 python-dotenv==1.0.1
 pytest==8.4.1
-httpx==0.28.1prometheus-fastapi-instrumentator==7.1.0
+httpx==0.28.1
+prometheus-fastapi-instrumentator==7.1.0
