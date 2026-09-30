@@ -8,9 +8,6 @@ on:
     branches:
       - main
   workflow_dispatch:
-  
- 
-
 
 jobs:
 
@@ -105,10 +102,10 @@ jobs:
 
 
   # =========================================================
-  # Build and Push Docker Images
+  # Build, Scan (Docker Scout) and Push Docker Images
   # =========================================================
   build-and-push:
-    name: Build and Push ${{ matrix.image }}
+    name: Build, Scan and Push ${{ matrix.image }}
     runs-on: ubuntu-latest
 
     # All backend tests must pass before this job starts
@@ -155,12 +152,41 @@ jobs:
         run: |
           az acr login --name ${{ vars.ACR_NAME }}
 
+      - name: Login to Docker Hub (required by Docker Scout)
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
       - name: Build Docker image
         run: |
           docker build \
             --platform linux/amd64 \
             -t ${{ vars.ACR_LOGIN_SERVER }}/${{ matrix.image }}:${{ github.sha }} \
             ./${{ matrix.service }}
+
+      # Security report: critical/high CVEs and base image recommendations
+      - name: Docker Scout - vulnerability report
+        uses: docker/scout-action@v1
+        with:
+          command: quickview,cves,recommendations
+          image: local://${{ vars.ACR_LOGIN_SERVER }}/${{ matrix.image }}:${{ github.sha }}
+          only-severities: critical,high
+          summary: true
+          exit-code: false
+          write-comment: false
+
+      # Security gate: block the image if it has a critical CVE that has a fix available
+      - name: Docker Scout - security gate
+        uses: docker/scout-action@v1
+        with:
+          command: cves
+          image: local://${{ vars.ACR_LOGIN_SERVER }}/${{ matrix.image }}:${{ github.sha }}
+          only-severities: critical
+          only-fixed: true
+          exit-code: true
+          summary: false
+          write-comment: false
 
       - name: Push Docker image with commit SHA
         run: |
