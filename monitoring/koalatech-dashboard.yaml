@@ -1,0 +1,78 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: koalatech-dashboard
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  koalatech-dashboard.json: |
+    {
+      "uid": "koalatech-overview",
+      "title": "KoalaTech - Application and Cluster Overview",
+      "schemaVersion": 39,
+      "refresh": "30s",
+      "time": { "from": "now-30m", "to": "now" },
+      "panels": [
+        {
+          "type": "stat",
+          "title": "Application targets UP",
+          "gridPos": { "x": 0, "y": 0, "w": 6, "h": 4 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "targets": [ { "refId": "A", "expr": "sum(up{job=\"koalatech-services\"})" } ]
+        },
+        {
+          "type": "stat",
+          "title": "Running pods (production)",
+          "gridPos": { "x": 6, "y": 0, "w": 6, "h": 4 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "targets": [ { "refId": "A", "expr": "sum(kube_pod_status_phase{namespace=\"production\", phase=\"Running\"})" } ]
+        },
+        {
+          "type": "stat",
+          "title": "Running pods (staging)",
+          "gridPos": { "x": 12, "y": 0, "w": 6, "h": 4 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "targets": [ { "refId": "A", "expr": "sum(kube_pod_status_phase{namespace=\"staging\", phase=\"Running\"})" } ]
+        },
+        {
+          "type": "stat",
+          "title": "Total requests (last 15 min)",
+          "gridPos": { "x": 18, "y": 0, "w": 6, "h": 4 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "targets": [ { "refId": "A", "expr": "round(sum(increase(http_requests_total{job=\"koalatech-services\"}[15m])))" } ]
+        },
+        {
+          "type": "timeseries",
+          "title": "Request rate by service (req/s)",
+          "gridPos": { "x": 0, "y": 4, "w": 12, "h": 8 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "fieldConfig": { "defaults": { "unit": "reqps" }, "overrides": [] },
+          "targets": [ { "refId": "A", "expr": "sum by (namespace, service) (rate(http_requests_total{job=\"koalatech-services\"}[2m]))", "legendFormat": "{{namespace}}/{{service}}" } ]
+        },
+        {
+          "type": "timeseries",
+          "title": "95th percentile response time by service",
+          "gridPos": { "x": 12, "y": 4, "w": 12, "h": 8 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
+          "targets": [ { "refId": "A", "expr": "histogram_quantile(0.95, sum by (le, service) (rate(http_request_duration_seconds_bucket{job=\"koalatech-services\"}[5m])))", "legendFormat": "{{service}}" } ]
+        },
+        {
+          "type": "timeseries",
+          "title": "CPU usage by pod (production)",
+          "gridPos": { "x": 0, "y": 12, "w": 12, "h": 8 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+          "targets": [ { "refId": "A", "expr": "sum by (pod) (rate(container_cpu_usage_seconds_total{namespace=\"production\", container!=\"\"}[5m]))", "legendFormat": "{{pod}}" } ]
+        },
+        {
+          "type": "timeseries",
+          "title": "Memory usage by pod (production)",
+          "gridPos": { "x": 12, "y": 12, "w": 12, "h": 8 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "fieldConfig": { "defaults": { "unit": "bytes" }, "overrides": [] },
+          "targets": [ { "refId": "A", "expr": "sum by (pod) (container_memory_working_set_bytes{namespace=\"production\", container!=\"\"})", "legendFormat": "{{pod}}" } ]
+        }
+      ]
+    }

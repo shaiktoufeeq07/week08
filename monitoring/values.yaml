@@ -1,0 +1,37 @@
+# Helm values for kube-prometheus-stack (Prometheus + Grafana + kube-state-metrics + node-exporter)
+
+alertmanager:
+  enabled: false
+
+grafana:
+  service:
+    type: ClusterIP
+
+prometheus:
+  prometheusSpec:
+    retention: 2d
+    resources:
+      requests:
+        cpu: 200m
+        memory: 512Mi
+
+    # Scrape /metrics from the five KoalaTech FastAPI services in staging and production
+    additionalScrapeConfigs:
+      - job_name: koalatech-services
+        metrics_path: /metrics
+        kubernetes_sd_configs:
+          - role: endpoints
+            namespaces:
+              names:
+                - production
+                - staging
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_service_name]
+            regex: (user|student|lecturer|course|enrollment)-service
+            action: keep
+          - source_labels: [__meta_kubernetes_namespace]
+            target_label: namespace
+          - source_labels: [__meta_kubernetes_service_name]
+            target_label: service
+          - source_labels: [__meta_kubernetes_pod_name]
+            target_label: pod
